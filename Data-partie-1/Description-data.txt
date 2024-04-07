@@ -1,0 +1,10 @@
+Sites.csv décrit les 642 sites éoliens : il reprend les coordonnées (LAT,LON) de chaque site éolien, son type (offshore/onshore), sa capacité éolienne maximale et son index (de 0 à 641). 
+
+Rendements_onshore.csv reprend, avec une ligne pour chaque site (placés dans l'ordre des index de 0 à 641), l’évolution heure par heure du rendement éolien onshore sur un an = 8760 valeurs (un rendement éolien onshore est aussi disponible pour les sites répertoriés comme offshore, il faut ignorer ces valeurs) 
+
+Rendements_offshore.csv reprend, avec une ligne pour chaque site (placés dans l'ordre des index sde 0 à 641), l’évolution heure par heure du rendement éolien offshore sur un an = 8760 valeurs  (un rendement éolien offshore est aussi disponible pour les sites répertoriés comme onshore, il faut ignorer ces valeurs)
+
+Exemples : 
+- le site d'index 0 est offshore, ses rendements sont sur la première ligne de Rendements_offshore.csv
+- le site d'index 1 est onshore, ses rendements sont sur la deuxième ligne de Rendements_onshore.csv
+(et donc il faut ignorer la deuxième ligne de Rendements_offshore.csv et la première ligne de Rendements_onshore.csv)
