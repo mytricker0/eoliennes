@@ -1,11 +1,15 @@
 import pandas as pd
 from pulp import *
 from tqdm import tqdm
+import os
+
 # Charger les données
 sites = pd.read_csv('Data-partie-1/Sites.csv')
-rendements_onshore = pd.read_csv('Data-partie-1/Rendements_onshore.csv')
-rendements_offshore = pd.read_csv('Data-partie-1/Rendements_offshore.csv')
+rendements_onshore = pd.read_csv('Data-partie-1/Rendements_onshore.csv',header=None)
+rendements_offshore = pd.read_csv('Data-partie-1/Rendements_offshore.csv',header=None)
+print(len(sites),len(rendements_offshore), len(rendements_onshore))
 
+# os._exit(0)
 # Paramètres du problème
 P_total = 500000  # Puissance totale à installer en MW
 kappa = 0.17  # Fraction de la puissance à consacrer à des sites offshore
