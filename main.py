@@ -1,79 +1,61 @@
 import pandas as pd
-import pulp
-
+from pulp import *
 from tqdm import tqdm
- 
- 
-for i in tqdm(range(int(9e6))):
-    pass
+# Charger les données
+sites = pd.read_csv('Data-partie-1/Sites.csv')
+rendements_onshore = pd.read_csv('Data-partie-1/Rendements_onshore.csv')
+rendements_offshore = pd.read_csv('Data-partie-1/Rendements_offshore.csv')
 
-# Assuming P_total and other required parameters are defined
-P_total = 500000  # Total power to be installed in MW
+# Paramètres du problème
+P_total = 500000  # Puissance totale à installer en MW
+kappa = 0.17  # Fraction de la puissance à consacrer à des sites offshore
+T = 3  # Durée de la période pour la définition de la variabilité
+delta = 0.02  # Paramètre pour la limite sur la variabilité moyenne
 
-# Load the CSV files into pandas DataFrames
-sites_df = pd.read_csv('Data-partie-1/Sites.csv')
-onshore_efficiency = pd.read_csv('Data-partie-1/Rendements_onshore.csv')
-offshore_efficiency = pd.read_csv('Data-partie-1/Rendements_offshore.csv')
+# Création du modèle d'optimisation
+model = LpProblem("Optimisation_Capacité_Éolienne", LpMaximize)
+print("Modèle créé")
 
-# Define a function to get the efficiency based on the offshore status and hour
-def get_efficiency(is_offshore, index, hour):
-    if is_offshore == 'Non':  # Assuming 'Non' means onshore
-        return onshore_efficiency.iloc[index, hour]
-    else:  # Assuming any other value means offshore
-        return offshore_efficiency.iloc[index, hour]
+# Variables de décision
+# Puissance installée sur le site i au temps t
+P_vars = LpVariable.dicts("Puissance", [(i,t) for i in sites.index for t in range(8760)], lowBound=0, upBound=None)
+print("Variables de décision créées")
+# Énergie produite sur le site i au temps t
+E_vars = LpVariable.dicts("Energie", [(i,t) for i in sites.index for t in range(8760)], lowBound=0, upBound=None)
+print("Variables de décision créées")
+# Minimiser la puissance installée
+model += lpSum([P_vars[i,t] for i in sites.index for t in range(8760)])
+print("Objectif ajouté")
+# Contraintes
+# Puissance totale installée ne doit pas dépasser P_total
+model += lpSum([P_vars[i,t] for i in sites.index for t in range(8760)]) <= P_total
+print("Contrainte ajoutée")
+# Fraction de la puissance à consacrer à des sites offshore
+model += lpSum([P_vars[i,t] for i in sites.index if sites['capacite offshore'][i] == 'Oui' for t in range(8760)]) >= kappa * P_total
+print("Contrainte ajoutée")
 
-# Define the optimization model
-model = pulp.LpProblem("Wind_Farm_Optimization", pulp.LpMaximize)
-
-# Assume I is the set of site indices, T is the set of time periods
-I = range(len(sites_df) - 1)
-T = range(8760)  # Number of hours in a year
-
-# Decision variables for power
-P_vars = pulp.LpVariable.dicts("Power", (I, T), lowBound=0)
-# Decision variables for energy
-E_vars = pulp.LpVariable.dicts("Energy", (I, T), lowBound=0)
-# Variable for minimum energy production
-min_energy = pulp.LpVariable("Min_Energy", lowBound=0)
-
-# Add the objective function
-model += min_energy
-
-# Constraints for the power capacities and energy production
-for i in tqdm(I):
-    is_offshore = sites_df.loc[i, 'capacite offshore']  # 'Oui' or 'Non'
-    capacity_max = sites_df.loc[i, 'capacites']  # Actual column name for max capacity
-    for t in T:
-        efficiency = get_efficiency(is_offshore, i, t)
-        model += P_vars[i][t] <= capacity_max
-        model += E_vars[i][t] == efficiency * P_vars[i][t]
-
-# Constraint for the total installed power
-model += pulp.lpSum([P_vars[i][t] for i in I for t in T]) <= P_total
-
-# Constraint to ensure min_energy is the least of the energies produced in any hour
-for t in tqdm(T):
-    model += min_energy <= pulp.lpSum([E_vars[i][t] for i in I])
-print("Model created")
-# Solve the model
+# Contraintes de production d'énergie
+for i in tqdm(sites.index):
+    for t in range(min(8760, len(rendements_offshore))):
+        # Onshore
+        if sites['capacite offshore'][i] == 'Non':
+            model += E_vars[i,t] == rendements_onshore.iloc[i,t] * P_vars[i,t]
+        # Offshore
+        else:
+            model += E_vars[i,t] == rendements_offshore.iloc[i,t] * P_vars[i,t]
+print("Contraintes ajoutées")
+print("Contraintes ajoutées")
+# Résoudre le modèle
 model.solve()
-print("Model solved")
-
-# Output results
+print("Modèle résolu")
+# Affichage des résultats
 for v in model.variables():
-    print(v.name, "=", v.varValue)
+    if v.varValue > 0:
+        print(v.name, "=", v.varValue)
+print("Énergie totale produite:", value(model.objective), "MWh")
+# Énergie totale produite
+energie_totale = sum([E_vars[i,t].varValue for i in sites.index for t in range(8760)])
+print("Énergie totale produite:", energie_totale, "MWh")
 
-print("The maximal minimum hourly energy production is:", pulp.value(model.objective))
-
-
-power_capacities = {(i, t): pulp.value(P_vars[i][t]) for i in I for t in T}
-energy_productions = {(i, t): pulp.value(E_vars[i][t]) for i in I for t in T}
-
-# To get an idea of the energy production per site, you might sum over all hours:
-total_energy_per_site = {i: sum(energy_productions[(i, t)] for t in T) for i in I}
-
-# Print the total installed power and energy production for each site
-for i in I:
-    print(f"Site {i}: Installed Power = {power_capacities[(i, 0)]}, Total Energy Production = {total_energy_per_site[i]} MWh")
-
-# Post-processing for analysis and visualization will go here
+# Commentaires sur le résultat et le temps de résolution
+# ... (à rédiger en français)
